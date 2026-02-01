@@ -1,0 +1,1 @@
+Visualisation des données MonMaster 2025 disponibles en OpenData sur https://data.enseignementsup-recherche.gouv.fr/explore/dataset/fr-esr-mon_master/information/?flg=fr-fr&q=droit+et+stratégies+de+la+sécurité 
