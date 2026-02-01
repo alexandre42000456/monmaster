@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualisation Master 2025</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --success-color: #27ae60;
+            --background: #ecf0f1;
+            --card-background: #ffffff;
+            --text-color: #2c3e50;
+            --border-color: #bdc3c7;
+            --shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: var(--background);
+            color: var(--text-color);
+            line-height: 1.6;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: var(--primary-color);
+            margin-bottom: 30px;
+            text-align: center;
+            font-size: 2rem;
+        }
+
+        .card {
+            background: var(--card-background);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow);
+        }
+
+        .search-section {
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 15px;
+            font-size: 16px;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .search-input:focus {
+            border-color: var(--secondary-color);
+        }
+
+        .search-results {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: var(--card-background);
+            border: 2px solid var(--border-color);
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            max-height: 400px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+            box-shadow: var(--shadow);
+        }
+
+        .search-results.active {
+            display: block;
+        }
+
+        .search-result-item {
+            padding: 12px 15px;
+            cursor: pointer;
+            border-bottom: 1px solid var(--background);
+            transition: background-color 0.2s;
+        }
+
+        .search-result-item:hover {
+            background-color: var(--background);
+        }
+
+        .search-result-item:last-child {
+            border-bottom: none;
+        }
+
+        .info-section {
+            display: none;
+        }
+
+        .info-section.active {
+            display: block;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .info-item {
+            padding: 10px;
+            background: var(--background);
+            border-radius: 6px;
+        }
+
+        .info-label {
+            font-weight: 600;
+            color: var(--primary-color);
+            font-size: 0.9rem;
+            margin-bottom: 5px;
+        }
+
+        .info-value {
+            font-size: 1rem;
+            color: var(--text-color);
+        }
+
+        .filter-section {
+            display: none;
+        }
+
+        .filter-section.active {
+            display: block;
+        }
+
+        .filter-select {
+            width: 100%;
+            padding: 12px;
+            font-size: 16px;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            outline: none;
+        }
+
+        .chart-section {
+            display: none;
+            min-height: 400px;
+        }
+
+        .chart-section.active {
+            display: block;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin-top: 20px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            font-size: 1.2rem;
+            color: var(--secondary-color);
+        }
+
+        .error {
+            text-align: center;
+            padding: 40px;
+            font-size: 1.2rem;
+            color: #e74c3c;
+        }
+
+        .no-selection {
+            text-align: center;
+            padding: 40px;
+            color: #7f8c8d;
+            font-style: italic;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 1.5rem;
+            }
+
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .chart-container {
+                height: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Visualisation des données Master 2025</h1>
+
+        <div class="card search-section">
+            <input
+                type="text"
+                class="search-input"
+                id="searchInput"
+                placeholder="Rechercher par université, mention ou parcours..."
+            >
+            <div class="search-results" id="searchResults"></div>
+        </div>
+
+        <div class="card info-section" id="infoSection">
+            <h2 style="margin-bottom: 15px; color: var(--primary-color);">Informations de la formation</h2>
+            <div class="info-grid" id="infoGrid"></div>
+        </div>
+
+        <div class="card filter-section" id="filterSection">
+            <h2 style="margin-bottom: 15px; color: var(--primary-color);">Filtres d'analyse</h2>
+            <select class="filter-select" id="filterSelect">
+                <option value="">Aucun filtre - Effectifs bruts</option>
+                <option value="130">Part des femmes</option>
+                <option value="131">Part inscrits même établissement N-1</option>
+                <option value="132">Part issus même académie</option>
+                <option value="133">Part issus même région académique</option>
+                <option value="136">Part inscrits L3 générale N-1</option>
+                <option value="137">Part inscrits licence pro N-1</option>
+                <option value="138">Part inscrits BUT N-1</option>
+                <option value="139">Part inscrits master N-1</option>
+                <option value="141">Part non inscrits enseignement supérieur N-1</option>
+            </select>
+        </div>
+
+        <div class="card chart-section" id="chartSection">
+            <h2 style="margin-bottom: 15px; color: var(--primary-color);">Graphique en entonnoir</h2>
+            <div class="chart-container">
+                <canvas id="funnelChart"></canvas>
+            </div>
+        </div>
+
+        <div class="card search-section" id="compareSearchSection" style="display: none;">
+            <h2 style="margin-bottom: 15px; color: var(--primary-color);">Comparer avec une autre formation</h2>
+            <input
+                type="text"
+                class="search-input"
+                id="compareSearchInput"
+                placeholder="Rechercher une formation à comparer..."
+            >
+            <div class="search-results" id="compareSearchResults"></div>
+        </div>
+
+        <div class="card chart-section" id="compareChartSection" style="display: none;">
+            <h2 style="margin-bottom: 15px; color: var(--primary-color);">Comparaison des formations</h2>
+            <div class="chart-container">
+                <canvas id="compareChart"></canvas>
+            </div>
+        </div>
+
+        <div class="loading" id="loading">Chargement des données...</div>
+    </div>
+
+    <script>
+        let csvData = [];
+        let currentFormation = null;
+        let compareFormation = null;
+        let chart = null;
+        let compareChart = null;
+
+        // Chargement et parsing du CSV
+        async function loadCSV() {
+            try {
+                const response = await fetch('monmaster7.csv');
+                const arrayBuffer = await response.arrayBuffer();
+
+                // Décoder depuis ISO-8859-1
+                const decoder = new TextDecoder('macintosh');
+                const text = decoder.decode(arrayBuffer);
+
+                csvData = parseCSV(text);
+                document.getElementById('loading').style.display = 'none';
+
+                if (csvData.length === 0) {
+                    document.getElementById('loading').innerHTML = '<div class="error">Aucune donnée trouvée dans le fichier CSV</div>';
+                }
+            } catch (error) {
+                console.error('Erreur de chargement:', error);
+                document.getElementById('loading').innerHTML = '<div class="error">Erreur lors du chargement des données</div>';
+            }
+        }
+
+        function parseCSV(text) {
+            const lines = text.split('\n');
+            const data = [];
+
+            // Ignorer la première ligne (en-têtes)
+            for (let i = 1; i < lines.length; i++) {
+                if (lines[i].trim() === '') continue;
+
+                const values = lines[i].split(';');
+                if (values.length >= 140) {
+                    data.push(values);
+                }
+            }
+
+            return data;
+        }
+
+        // Système de recherche
+        const searchInput = document.getElementById('searchInput');
+        const searchResults = document.getElementById('searchResults');
+
+        searchInput.addEventListener('input', function() {
+            const query = this.value.toLowerCase().trim();
+
+            if (query.length < 2) {
+                searchResults.classList.remove('active');
+                return;
+            }
+
+            // Séparer la requête en mots individuels (au moins 2 caractères par mot)
+            const words = query.split(/\s+/).filter(word => word.length >= 2);
+
+            if (words.length === 0) {
+                searchResults.classList.remove('active');
+                return;
+            }
+
+            const results = csvData.filter(row => {
+                const universite = (row[4] || '').toLowerCase();
+                const mention = (row[11] || '').toLowerCase();
+                const parcours = (row[13] || '').toLowerCase();
+
+                // Combiner toutes les catégories
+                const fullText = universite + ' ' + mention + ' ' + parcours;
+
+                // Vérifier que TOUS les mots sont présents quelque part
+                return words.every(word => fullText.includes(word));
+            }).slice(0, 10);
+
+            displaySearchResults(results);
+        });
+
+        function displaySearchResults(results) {
+            if (results.length === 0) {
+                searchResults.innerHTML = '<div class="search-result-item">Aucun résultat trouvé</div>';
+                searchResults.classList.add('active');
+                return;
+            }
+
+            searchResults.innerHTML = results.map((row, index) => {
+                const universite = row[4] || 'N/A';
+                const mention = row[11] || 'N/A';
+                const parcours = row[13] || 'N/A';
+
+                return `
+                    <div class="search-result-item" onclick="selectFormation(${csvData.indexOf(row)})">
+                        <strong>${universite}</strong><br>
+                        ${mention} - ${parcours}
+                    </div>
+                `;
+            }).join('');
+
+            searchResults.classList.add('active');
+        }
+
+        // Cacher les résultats si on clique ailleurs
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.search-section')) {
+                searchResults.classList.remove('active');
+            }
+        });
+
+        function selectFormation(index) {
+            currentFormation = csvData[index];
+            searchResults.classList.remove('active');
+            searchInput.value = `${currentFormation[4]} - ${currentFormation[11]} - ${currentFormation[13]}`;
+
+            displayFormationInfo();
+            document.getElementById('filterSelect').value = '';
+            updateChart();
+
+            // Afficher la section de comparaison
+            document.getElementById('compareSearchSection').style.display = 'block';
+        }
+
+        function displayFormationInfo() {
+            const infoSection = document.getElementById('infoSection');
+            const infoGrid = document.getElementById('infoGrid');
+
+            const universite = currentFormation[4] || 'N/A';
+            const mention = currentFormation[11] || 'N/A';
+            const parcours = currentFormation[13] || 'N/A';
+            const region = currentFormation[8] || 'N/A';
+            const modalites = currentFormation[15] || 'N/A';
+
+            // Nouvelles données statistiques
+            const capacite = parseInt(currentFormation[26]) || 0;
+            const nbCandidats = parseInt(currentFormation[27]) || 0;
+            const nbPropositions = parseInt(currentFormation[82]) || 0;
+            const tauxAdmissibilite = nbCandidats > 0 ? ((nbPropositions / nbCandidats) * 100).toFixed(1) : 'N/A';
+
+            infoGrid.innerHTML = `
+                <div class="info-item">
+                    <div class="info-label">Université</div>
+                    <div class="info-value">${universite}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Mention</div>
+                    <div class="info-value">${mention}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Parcours</div>
+                    <div class="info-value">${parcours}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Région académique</div>
+                    <div class="info-value">${region}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Modalités d'enseignement</div>
+                    <div class="info-value">${modalites}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Places offertes</div>
+                    <div class="info-value">${capacite}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Nombre de candidats</div>
+                    <div class="info-value">${nbCandidats}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Taux d'admissibilité</div>
+                    <div class="info-value">${tauxAdmissibilite}${tauxAdmissibilite !== 'N/A' ? '%' : ''}</div>
+                </div>
+            `;
+
+            infoSection.classList.add('active');
+            document.getElementById('filterSection').classList.add('active');
+            document.getElementById('chartSection').classList.add('active');
+        }
+
+        function updateChart() {
+            if (!currentFormation) return;
+
+            const filterValue = document.getElementById('filterSelect').value;
+
+            // Mapping des filtres vers leurs colonnes de sous-ensembles
+            // [candidats confirmés, candidats classés, propositions reçues, propositions acceptées]
+            const filterColumns = {
+                '130': [28, 83, 104],  // Part des femmes
+                '131': [29, 84, 105],  // Part inscrits même établissement N-1
+                '132': [30, 85, 106],  // Part issus même académie
+                '133': [31, 86, 107],  // Part issus même région académique
+                '136': [32, 90, 114],  // Part inscrits L3 générale N-1
+                '137': [34, 93, 116],  // Part inscrits licence pro N-1
+                '138': [36, 95, 118],  // Part inscrits BUT N-1
+                '139': [38, 97, 120],  // Part inscrits master N-1
+                '141': [42, 101, 124]  // Part non inscrits enseignement supérieur N-1
+            };
+
+            const filterLabels = {
+                '130': 'Part des femmes',
+                '131': 'Part inscrits même établissement N-1',
+                '132': 'Part issus même académie',
+                '133': 'Part issus même région académique',
+                '136': 'Part inscrits L3 générale N-1',
+                '137': 'Part inscrits licence pro N-1',
+                '138': 'Part inscrits BUT N-1',
+                '139': 'Part inscrits master N-1',
+                '141': 'Part non inscrits enseignement supérieur N-1'
+            };
+
+            // Données totales (base)
+            const totalData = [
+                parseInt(currentFormation[26]) || 0,  // Capacité offerte
+                parseInt(currentFormation[27]) || 0,  // Candidats confirmés
+                parseInt(currentFormation[82]) || 0,  // Candidats avec proposition
+                parseInt(currentFormation[103]) || 0  // Candidats acceptés
+            ];
+
+            const labels = [
+                'Capacité offerte',
+                'Candidats confirmés',
+                'Propositions reçues (dont phase complémentaire)',
+                'Propositions acceptées (dont phase complémentaire)'
+            ];
+
+            const colors = [
+                '#2c3e50',  // Bleu très foncé
+                '#3498db',  // Bleu
+                '#52be80',  // Vert clair
+                '#27ae60'   // Vert foncé
+            ];
+
+            const highlightColors = [
+                '#34495e',  // Version plus claire du bleu très foncé
+                '#5dade2',  // Version plus claire du bleu
+                '#7dcea0',  // Version plus claire du vert clair
+                '#52be80'   // Version plus claire du vert foncé
+            ];
+
+            let datasets = [];
+
+            if (filterValue === '' || !filterColumns[filterValue]) {
+                // Mode sans filtre : afficher uniquement les effectifs totaux
+                datasets = [{
+                    label: 'Effectifs totaux',
+                    data: totalData,
+                    backgroundColor: colors,
+                    borderColor: colors,
+                    borderWidth: 1
+                }];
+            } else {
+                // Mode avec filtre : superposer le sous-ensemble
+                const subsetColumns = filterColumns[filterValue];
+                const subsetData = [
+                    0,  // Pas de sous-ensemble pour la capacité offerte
+                    subsetColumns[0] !== null ? (parseInt(currentFormation[subsetColumns[0]]) || 0) : 0,  // Candidats confirmés
+                    subsetColumns[1] !== null ? (parseInt(currentFormation[subsetColumns[1]]) || 0) : 0,  // Propositions reçues
+                    subsetColumns[2] !== null ? (parseInt(currentFormation[subsetColumns[2]]) || 0) : 0   // Propositions acceptées
+                ];
+
+                datasets = [
+                    {
+                        label: 'Effectifs totaux',
+                        data: totalData,
+                        backgroundColor: colors,
+                        borderColor: colors,
+                        borderWidth: 1
+                    },
+                    {
+                        label: filterLabels[filterValue],
+                        data: subsetData,
+                        backgroundColor: highlightColors,
+                        borderColor: highlightColors,
+                        borderWidth: 2
+                    }
+                ];
+            }
+
+            if (chart) {
+                chart.destroy();
+            }
+
+            const ctx = document.getElementById('funnelChart').getContext('2d');
+            chart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: datasets
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    label += context.parsed.x;
+
+                                    // Calculer le pourcentage si c'est un sous-ensemble
+                                    if (context.datasetIndex === 1 && context.dataIndex > 0) {
+                                        const total = totalData[context.dataIndex];
+                                        if (total > 0) {
+                                            const percentage = ((context.parsed.x / total) * 100).toFixed(1);
+                                            label += ' (' + percentage + '%)';
+                                        }
+                                    }
+
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            stacked: false,  // Pas d'empilement, superposition
+                            beginAtZero: true
+                        },
+                        y: {
+                            stacked: false
+                        }
+                    }
+                }
+            });
+        }
+
+        // Event listener pour le filtre
+        document.getElementById('filterSelect').addEventListener('change', updateChart);
+
+        // Système de recherche pour la comparaison
+        const compareSearchInput = document.getElementById('compareSearchInput');
+        const compareSearchResults = document.getElementById('compareSearchResults');
+
+        compareSearchInput.addEventListener('input', function() {
+            const query = this.value.toLowerCase().trim();
+
+            if (query.length < 2) {
+                compareSearchResults.classList.remove('active');
+                return;
+            }
+
+            // Séparer la requête en mots individuels
+            const words = query.split(/\s+/).filter(word => word.length >= 2);
+
+            if (words.length === 0) {
+                compareSearchResults.classList.remove('active');
+                return;
+            }
+
+            const results = csvData.filter(row => {
+                const universite = (row[4] || '').toLowerCase();
+                const mention = (row[11] || '').toLowerCase();
+                const parcours = (row[13] || '').toLowerCase();
+
+                // Combiner toutes les catégories
+                const fullText = universite + ' ' + mention + ' ' + parcours;
+
+                // Vérifier que TOUS les mots sont présents quelque part
+                return words.every(word => fullText.includes(word));
+            }).slice(0, 10);
+
+            displayCompareSearchResults(results);
+        });
+
+        // Cacher les résultats de comparaison si on clique ailleurs
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('#compareSearchSection')) {
+                compareSearchResults.classList.remove('active');
+            }
+        });
+
+        function displayCompareSearchResults(results) {
+            if (results.length === 0) {
+                compareSearchResults.innerHTML = '<div class="search-result-item">Aucun résultat trouvé</div>';
+                compareSearchResults.classList.add('active');
+                return;
+            }
+
+            compareSearchResults.innerHTML = results.map((row, index) => {
+                const universite = row[4] || 'N/A';
+                const mention = row[11] || 'N/A';
+                const parcours = row[13] || 'N/A';
+
+                return `
+                    <div class="search-result-item" onclick="selectCompareFormation(${csvData.indexOf(row)})">
+                        <strong>${universite}</strong><br>
+                        ${mention} - ${parcours}
+                    </div>
+                `;
+            }).join('');
+
+            compareSearchResults.classList.add('active');
+        }
+
+        function selectCompareFormation(index) {
+            compareFormation = csvData[index];
+            compareSearchResults.classList.remove('active');
+            compareSearchInput.value = `${compareFormation[4]} - ${compareFormation[11]} - ${compareFormation[13]}`;
+
+            updateCompareChart();
+        }
+
+        function updateCompareChart() {
+            if (!currentFormation || !compareFormation) return;
+
+            // Données de la première formation
+            const formation1Data = [
+                parseInt(currentFormation[26]) || 0,  // Capacité offerte
+                parseInt(currentFormation[27]) || 0,  // Candidats confirmés
+                parseInt(currentFormation[82]) || 0,  // Propositions reçues
+                parseInt(currentFormation[103]) || 0  // Propositions acceptées
+            ];
+
+            // Données de la deuxième formation
+            const formation2Data = [
+                parseInt(compareFormation[26]) || 0,  // Capacité offerte
+                parseInt(compareFormation[27]) || 0,  // Candidats confirmés
+                parseInt(compareFormation[82]) || 0,  // Propositions reçues
+                parseInt(compareFormation[103]) || 0  // Propositions acceptées
+            ];
+
+            const labels = [
+                'Capacité offerte',
+                'Candidats confirmés',
+                'Propositions reçues',
+                'Propositions acceptées'
+            ];
+
+            const formation1Name = `${currentFormation[4]} - ${currentFormation[11]}`;
+            const formation2Name = `${compareFormation[4]} - ${compareFormation[11]}`;
+
+            if (compareChart) {
+                compareChart.destroy();
+            }
+
+            document.getElementById('compareChartSection').style.display = 'block';
+
+            const ctx = document.getElementById('compareChart').getContext('2d');
+            compareChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: formation1Name,
+                            data: formation1Data,
+                            backgroundColor: '#3498db',
+                            borderColor: '#2980b9',
+                            borderWidth: 1
+                        },
+                        {
+                            label: formation2Name,
+                            data: formation2Data,
+                            backgroundColor: '#e74c3c',
+                            borderColor: '#c0392b',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': ' + context.parsed.x;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        // Chargement initial
+        loadCSV();
+    </script>
+</body>
+</html>
