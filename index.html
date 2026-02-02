@@ -406,8 +406,10 @@
 
             // Nouvelles données statistiques
             const capacite = parseInt(currentFormation[26]) || 0;
+            const admisPP = parseInt(currentFormation[126]) || 0;
+            const admisPC = parseInt(currentFormation[127]) || 0;
             const nbCandidats = parseInt(currentFormation[27]) || 0;
-            const nbPropositions = parseInt(currentFormation[82]) || 0;
+            const nbPropositions = = admisPP > 0 ? ((admisPP + admisPC)).toFixed(1) : 'N/A';
             const tauxAdmissibilite = nbCandidats > 0 ? ((nbPropositions / nbCandidats) * 100).toFixed(1) : 'N/A';
 
             infoGrid.innerHTML = `
